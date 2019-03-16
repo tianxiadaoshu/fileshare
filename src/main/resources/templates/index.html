@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" xmlns:th="http://www.thymeleaf.org"> <!--<![endif]-->
+<head>
+    <title>文件共享</title>
+    <meta charset="UTF-8"> <!-- for HTML5 -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" type="text/css" th:href="@{/file/assets/css/bootstrap.min.css}">
+    <script type="text/javascript" th:src="@{/file/assets/js/bootstrap.min.js}"></script>
+    <script type="text/javascript" th:src="@{/file/js/jquery.min.js}"></script>
+</head>
+
+<body>
+<h1 align="center" th:text="${'当前路径：' + cur_url}"></h1>
+<div class="container" style="width: 600px;height: 600px;">
+
+    <table class="table table-hover">
+        <tr>
+            <th>文件名</th>
+            <th>文件类型</th>
+            <th>下载</th>
+        </tr>
+        <tr align="center">
+            <td colspan="3"><button th:onclick="getDir([[${parent_url}]])">上级目录</button></td>
+        </tr>
+        <tr th:each="file:${fileList}">
+            <td>
+                <span th:if="${file.directory eq true}">
+                    <button th:text="${'文件夹名：' + file.getName()}"
+                            th:onclick="getDir([[${file.absolutelyUrl}]])"></button>
+                </span>
+                <span th:if="${file.directory eq false}">
+                    <button th:text="${'文件名：' + file.getName()}" ></button>
+                </span>
+
+            </td>
+            <td>
+                <span th:if="${file.directory eq true}">文件夹</span>
+                <span th:if="${file.directory eq false}">文件</span>
+            </td>
+            <td >
+                <span th:if="${file.directory eq true}"><span>无法直接下载文件夹</span></span>
+                <span th:if="${file.directory eq false}">
+                    <button th:onclick="download_file([[${file.absolutelyUrl}]])">下载文件</button>
+                </span>
+            </td>
+        </tr>
+    </table>
+</div>
+</body>
+<script>
+
+    function getDir(des_url) {
+        if (des_url ==="#"){
+            return null;
+        }
+        if (des_url === null){
+            window.location.href="/";
+        }
+        var tem_url = des_url.toString();
+        var url = tem_url.replace("\\", "/");
+        window.location.href="/dir/get?destination=" + url + "/";
+    }
+
+    function download_file(des_url) {
+        var tem_url = des_url.toString();
+        var url = tem_url.replace("\\", "/");
+        window.location.href="/download/file?destination=" + url;
+    }
+</script>
+</html>
