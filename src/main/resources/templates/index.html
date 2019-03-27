@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
-<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
-<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" xmlns:th="http://www.thymeleaf.org"> <!--<![endif]-->
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="zh-cmn-Hans"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang="zh-cmn-Hans"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9" lang="zh-cmn-Hans"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" xmlns:th="http://www.thymeleaf.org" lang="zh-cmn-Hans"> <!--<![endif]-->
 <head>
     <title>文件共享</title>
     <meta charset="UTF-8"> <!-- for HTML5 -->
@@ -10,6 +10,17 @@
     <link rel="stylesheet" type="text/css" th:href="@{/file/assets/css/bootstrap.min.css}">
     <script type="text/javascript" th:src="@{/file/assets/js/bootstrap.min.js}"></script>
     <script type="text/javascript" th:src="@{/file/js/jquery.min.js}"></script>
+    <style>
+        progress {
+            background-color: #56BE64;
+        }
+        progress::-webkit-progress-bar {
+            background: #ccc;
+        }
+        progress::-webkit-progress-value {
+            background: #56BE64;
+        }
+    </style>
 </head>
 
 <body>
@@ -23,13 +34,102 @@
             <th>下载</th>
         </tr>
         <tr align="center">
-            <td colspan="3"><button th:onclick="getDir([[${parent_url}]])">上级目录</button></td>
+            <td colspan="3">
+                <button onclick="getDir(this)" th:value="${parent_url}">上级目录</button>
+                <form id= "uploadForm">
+
+                    <label for="curUrl" hidden>文件路径</label><input type="text" id="curUrl" name="curUrl" th:value="${cur_url}" hidden/>
+
+                    <label for="file">上传文件： <input type="file" name="file" id="file" multiple="multiple"/></label>
+                    <input type="button" value="上传" onclick="doUpload()" />
+                </form>
+                <!--进度条部分(默认隐藏)-->
+                <div style="display: none;" class="progress-body">
+                    <div style="margin-bottom: 10px;"><span style="width: 100px; display: inline-block; text-align: right">上传进度：</span><progress></progress></div>
+                    <div style="margin-bottom: 10px; margin-left: 30px; width: 200px;" class="progress-speed">0 bytes</div>
+                    <div style="margin-bottom: 10px; margin-left: 30px; width: 200px;" class="progress-info">资料正准备上传</div>
+                </div>
+            </td>
         </tr>
+
+        <script>
+            function doUpload() {
+                var formData = new FormData($( "#uploadForm" )[0]);
+                $.ajax({
+                    url: '/upload/file' ,
+                    type: 'POST',
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    xhr: function () {
+                        var xhr = $.ajaxSettings.xhr();
+                        if (xhr.upload) {
+                            //处理进度条的事件
+                            xhr.upload.addEventListener("progress", progressHandle, false);
+                            //加载完成的事件
+                            xhr.addEventListener("load", completeHandle, false);
+                            //加载出错的事件
+                            xhr.addEventListener("error", failedHandle, false);
+                            //加载取消的事件
+                            xhr.addEventListener("abort", canceledHandle, false);
+                            //开始显示进度条
+                            showProgress();
+                            return xhr;
+                        }
+                    },
+                    success: function (returndata) {
+
+                        alert(returndata.back_infor);
+                        window.location.reload();
+                    },
+                    error: function (returndata) {
+                        alert(returndata);
+                    }
+                });
+                /******核心AJAX部分结束******/
+                //显示进度条的函数
+                function showProgress() {
+                    $(".progress-body").css("display", "block");
+                }
+                //隐藏进度条的函数
+                function hideProgress() {
+                    $('.progress-body>.progress-speed', window.parent.document).html("0 bytes");
+                    $('.progress-body>.progress-info', window.parent.document).html("资料正准备上传");
+                    $(".progress-body", window.parent.document).css("display", "none");
+                }
+                //进度条更新
+                function progressHandle(e) {
+                    $('.progress-body progress').attr({value: e.loaded, max: e.total});
+                    var percent = e.loaded / e.total * 100;
+                    $('.progress-body>.progress-speed').html(((e.loaded / 1024) / 1024).toFixed(2) + "/" + ((e.total / 1024) / 1024).toFixed(2) + " MB. " + percent.toFixed(2) + "%");
+                    if (percent === 100) {
+                        $('.progress-body>.progress-info').html("上传完成,后台正在处理...");
+                    } else {
+                        $('.progress-body>.progress-info').html("资料上传ing...");
+                    }
+                }
+                //上传完成处理函数
+                function completeHandle(e) {
+                    $('.progress-body>.progress-info').html("上传资料完成");
+                    setTimeout(hideProgress, 2000);
+                }
+                //上传出错处理函数
+                function failedHandle(e) {
+                    $('.progress-body>.progress-info', window.parent.document).html("上传资源出错");
+                }
+                //上传取消处理函数
+                function canceledHandle(e) {
+                    $('.progress-body>.progress-info', window.parent.document).html("上传资源取消");
+                }
+            }
+        </script>
+
         <tr th:each="file:${fileList}">
             <td>
                 <span th:if="${file.directory eq true}">
                     <button th:text="${'文件夹名：' + file.getName()}"
-                            th:onclick="getDir([[${file.absolutelyUrl}]])"></button>
+                            onclick="getDir(this)" th:value="${file.absolutelyUrl}"></button>
                 </span>
                 <span th:if="${file.directory eq false}">
                     <button th:text="${'文件名：' + file.getName()}" ></button>
@@ -43,7 +143,7 @@
             <td >
                 <span th:if="${file.directory eq true}"><span>无法直接下载文件夹</span></span>
                 <span th:if="${file.directory eq false}">
-                    <button th:onclick="download_file([[${file.absolutelyUrl}]])">下载文件</button>
+                    <button onclick="download_file(this)" th:value="${file.absolutelyUrl}">下载文件</button>
                 </span>
             </td>
         </tr>
@@ -52,19 +152,23 @@
 </body>
 <script>
 
-    function getDir(des_url) {
+    function getDir(in_button) {
+        var des_url = in_button.value;
+
         if (des_url ==="#"){
             return null;
+        }else if (des_url === "$"){
+            window.location.href='/'
+        }else {
+            var tem_url = des_url.toString();
+            var url = tem_url.replace("\\", "/");
+            window.location.href="/dir/get?destination=" + url + "/";
         }
-        if (des_url === null){
-            window.location.href="/";
-        }
-        var tem_url = des_url.toString();
-        var url = tem_url.replace("\\", "/");
-        window.location.href="/dir/get?destination=" + url + "/";
+
     }
 
-    function download_file(des_url) {
+    function download_file(down_button) {
+        var des_url = down_button.value;
         var tem_url = des_url.toString();
         var url = tem_url.replace("\\", "/");
         window.location.href="/download/file?destination=" + url;

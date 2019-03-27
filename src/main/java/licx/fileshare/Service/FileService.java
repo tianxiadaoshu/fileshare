@@ -22,6 +22,8 @@ public class FileService {
 
     public String getParentDir(String destination){
         File file = new File(destination);
+        if (file.getParent() == null)
+            return "$";
         return file.getParent();
     }
 

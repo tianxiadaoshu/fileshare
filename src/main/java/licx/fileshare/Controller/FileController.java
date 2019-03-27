@@ -10,9 +10,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 @Controller
@@ -60,6 +70,49 @@ public class FileController {
         headers.add("ETag", String.valueOf(System.currentTimeMillis()));
 
         return ResponseEntity.ok().headers(headers).contentLength(file.length()).contentType(MediaType.parseMediaType("application/octet-stream")) .body(new FileSystemResource(file));
+    }
+
+
+    @PostMapping("/upload/file")
+    @ResponseBody
+    public HashMap<String, String> singleFileUpload(@RequestParam("file") MultipartFile[] files,
+                                   @RequestParam("curUrl") String curUrl) {
+        HashMap<String, String> result = new HashMap<>();
+        String fileNameList = "";
+        if (files.length == 0){
+            result.put("back_infor", "请先选择要上传的文件");
+            return result;
+        }
+//        if (file.isEmpty()) {
+//            result.put("back_infor", "请先选择要上传的文件");
+//            return result;
+//        }
+
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                result.put("back_infor", "请先选择要上传的文件");
+                return result;
+            }
+            try {
+                // Get the file and save it somewhere
+
+                byte[] bytes = file.getBytes();
+                Path path = Paths.get(curUrl + file.getOriginalFilename());
+                Files.write(path, bytes);
+
+                fileNameList = String.format("%s%s", fileNameList, "','" + file.getOriginalFilename());
+//                result.put("back_infor",
+//                        "成功上传文件 '" + file.getOriginalFilename() + "'");
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        result.put("back_infor",
+                "成功上传文件 " + fileNameList + "' ");
+
+        return result;
     }
 
 }
