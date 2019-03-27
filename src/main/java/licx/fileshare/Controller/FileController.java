@@ -9,12 +9,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
 import java.io.IOException;
@@ -73,7 +69,7 @@ public class FileController {
     }
 
 
-    @PostMapping("/upload/file")
+    @PostMapping("/file")
     @ResponseBody
     public HashMap<String, String> singleFileUpload(@RequestParam("file") MultipartFile[] files,
                                    @RequestParam("curUrl") String curUrl) {
@@ -115,4 +111,38 @@ public class FileController {
         return result;
     }
 
+    @DeleteMapping("/file")
+    @ResponseBody
+    public HashMap<String, String> deleteFile(@RequestParam("fileUrl") String fileUrl){
+        File desFile = new File(fileUrl);
+        HashMap<String, String> result = new HashMap<>();
+
+        if (!desFile.exists()){
+            result.put("back_message", "文件不存在！");
+            return result;
+        }
+
+        if (fileService.deleteFolder(fileUrl))
+            result.put("back_message", "文件(夹)删除成功。");
+        else
+            result.put("back_message", "文件(夹)删除失败。");
+        return result;
+    }
+
+    @PostMapping("/dir")
+    @ResponseBody
+    public HashMap<String, String> createDirectory(@RequestParam("desUrl") String desUrl,
+                                                   @RequestParam("dirName") String dirName){
+        File file = new File(desUrl, dirName);
+        HashMap<String, String> result = new HashMap<>();
+        if (file.exists() && file.isDirectory()){
+            result.put("back_message", "文件夹已存在！");
+            return result;
+        }
+        if (file.mkdir())
+            result.put("back_message", "文件夹创建成功！");
+        else
+            result.put("back_message", "文件夹创建失败！");
+        return result;
+    }
 }

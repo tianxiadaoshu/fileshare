@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="zh-cmn-Hans"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang="zh-cmn-Hans"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9" lang="zh-cmn-Hans"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" xmlns:th="http://www.thymeleaf.org" lang="zh-cmn-Hans"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" xmlns:th="http://www.thymeleaf.org" lang="zh-Hans"> <!--<![endif]-->
 <head>
     <title>文件共享</title>
     <meta charset="UTF-8"> <!-- for HTML5 -->
@@ -29,18 +29,32 @@
 
     <table class="table table-hover">
         <tr>
-            <th>文件名</th>
-            <th>文件类型</th>
-            <th>下载</th>
+            <th>文件名&nbsp;&nbsp;</th>
+            <th>文件类型&nbsp;</th>
+            <th>下载&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+            <th>删除&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
         </tr>
-        <tr align="center">
-            <td colspan="3">
+
+        <tr align="center" th:if="${parent_url ne '#'}">
+            <td colspan="4">
                 <button onclick="getDir(this)" th:value="${parent_url}">上级目录</button>
+            </td>
+        </tr>
+
+
+        <tr align="center" th:if="${parent_url ne '#'}">
+            <td colspan="4">
+                <button onclick="createDir(this)" th:value="${cur_url}">当前目录下新建文件夹</button>
+
+            </td>
+        </tr>
+        <tr align="center" th:if="${parent_url ne '#'}">
+            <td colspan="4">
+
                 <form id= "uploadForm">
-
-                    <label for="curUrl" hidden>文件路径</label><input type="text" id="curUrl" name="curUrl" th:value="${cur_url}" hidden/>
-
-                    <label for="file">上传文件： <input type="file" name="file" id="file" multiple="multiple"/></label>
+                    <label for="curUrl" hidden>文件存储路径</label>
+                    <input type="text" id="curUrl" name="curUrl" th:value="${cur_url}" hidden/>
+                    <label for="file">上传文件 <input type="file" name="file" id="file" multiple="multiple"/></label>
                     <input type="button" value="上传" onclick="doUpload()" />
                 </form>
                 <!--进度条部分(默认隐藏)-->
@@ -56,7 +70,7 @@
             function doUpload() {
                 var formData = new FormData($( "#uploadForm" )[0]);
                 $.ajax({
-                    url: '/upload/file' ,
+                    url: '/file' ,
                     type: 'POST',
                     data: formData,
                     cache: false,
@@ -78,13 +92,13 @@
                             return xhr;
                         }
                     },
-                    success: function (returndata) {
+                    success: function (return_data) {
 
-                        alert(returndata.back_infor);
+                        alert(return_data.back_infor);
                         window.location.reload();
                     },
-                    error: function (returndata) {
-                        alert(returndata);
+                    error: function (return_data) {
+                        alert(return_data);
                     }
                 });
                 /******核心AJAX部分结束******/
@@ -128,11 +142,13 @@
         <tr th:each="file:${fileList}">
             <td>
                 <span th:if="${file.directory eq true}">
-                    <button th:text="${'文件夹名：' + file.getName()}"
+                    <span>文件夹名：</span><br>
+                    <button th:utext="${file.getName()}"
                             onclick="getDir(this)" th:value="${file.absolutelyUrl}"></button>
                 </span>
                 <span th:if="${file.directory eq false}">
-                    <button th:text="${'文件名：' + file.getName()}" ></button>
+                    <span>文件名：</span><br>
+                    <button th:utext="${file.getName()}" ></button>
                 </span>
 
             </td>
@@ -141,9 +157,17 @@
                 <span th:if="${file.directory eq false}">文件</span>
             </td>
             <td >
-                <span th:if="${file.directory eq true}"><span>无法直接下载文件夹</span></span>
+                <span th:if="${file.directory eq true}"><span>无法直接下载</span></span>
                 <span th:if="${file.directory eq false}">
                     <button onclick="download_file(this)" th:value="${file.absolutelyUrl}">下载文件</button>
+                </span>
+            </td>
+            <td >
+                <span th:if="${file.directory eq true}">
+                    <button onclick="delete_file(this)" th:value="${file.absolutelyUrl}">删除文件夹</button>
+                </span>
+                <span th:if="${file.directory eq false}">
+                    <button onclick="delete_file(this)" th:value="${file.absolutelyUrl}">删除文件</button>
                 </span>
             </td>
         </tr>
@@ -173,5 +197,56 @@
         var url = tem_url.replace("\\", "/");
         window.location.href="/download/file?destination=" + url;
     }
+
+    function delete_file(delete_button) {
+        var des_url = delete_button.value;
+        var tem_url = des_url.toString();
+        var url = tem_url.replace("\\", "/");
+
+        if (confirm("您确定要删除该文件？\n该文件位于：" + url)){
+            $.ajax({
+                url: '/file' ,
+                type: 'DELETE',
+                data: {
+                    "fileUrl":url
+                },
+                success: function (return_data) {
+
+                    alert(return_data.back_message);
+                    window.location.reload();
+                },
+                error: function (return_data) {
+                    alert(return_data);
+                }
+            });
+        }
+    }
+
+    function createDir(create_button) {
+
+        var des_url = create_button.value;
+        var tem_url = des_url.toString();
+        var url = tem_url.replace("\\", "/");
+
+        var dirName = prompt("请输入新的文件夹名，该文件位于：" + url);
+        $.ajax({
+            url: '/dir' ,
+            type: 'POST',
+            data: {
+                "desUrl":url,
+                "dirName":dirName
+            },
+            success: function (return_data) {
+
+                alert(return_data.back_message);
+                window.location.reload();
+            },
+            error: function (return_data) {
+                alert(return_data);
+            }
+        });
+
+    }
+
 </script>
 </html>
