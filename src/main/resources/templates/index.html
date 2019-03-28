@@ -29,27 +29,50 @@
 
     <table class="table table-hover">
         <tr>
-            <th>文件名&nbsp;&nbsp;</th>
-            <th>文件类型&nbsp;</th>
+            <th>文件名&nbsp;&nbsp;&nbsp;&nbsp;</th>
+            <th>文件类型&nbsp;&nbsp;&nbsp;</th>
             <th>下载&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
             <th>删除&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+            <th>添加到共享目录&nbsp;&nbsp;</th>
         </tr>
 
+        <tr align="center" >
+            <td colspan="5">
+                <button onclick="window.location.href='/share'">共享文件目录</button>
+            </td>
+        </tr>
         <tr align="center" th:if="${parent_url ne '#'}">
-            <td colspan="4">
+            <td colspan="5">
                 <button onclick="getDir(this)" th:value="${parent_url}">上级目录</button>
             </td>
         </tr>
 
-
         <tr align="center" th:if="${parent_url ne '#'}">
-            <td colspan="4">
+            <td colspan="5">
                 <button onclick="createDir(this)" th:value="${cur_url}">当前目录下新建文件夹</button>
 
             </td>
         </tr>
+
+        <tr align="center" >
+            <td colspan="5">
+                <label for="downloadPath">要下载的文件的绝对路径URL：</label>
+                <input type="text" id="downloadPath" name="downloadPath">
+                <br>
+                <button onclick="download_file_by_path()">通过所输入的路径下载文件</button>
+            </td>
+        </tr>
+        <script>
+            function download_file_by_path() {
+                var downloadPath = document.getElementById("downloadPath");
+                var tem_url = downloadPath.value;
+                var url = tem_url.replace(/\\/g, "/");
+                window.location.href="/download/file?destination=" + url;
+            }
+        </script>
+
         <tr align="center" th:if="${parent_url ne '#'}">
-            <td colspan="4">
+            <td colspan="5">
 
                 <form id= "uploadForm">
                     <label for="curUrl" hidden>文件存储路径</label>
@@ -93,8 +116,7 @@
                         }
                     },
                     success: function (return_data) {
-
-                        alert(return_data.back_infor);
+                        alert(return_data.back_message);
                         window.location.reload();
                     },
                     error: function (return_data) {
@@ -170,6 +192,13 @@
                     <button onclick="delete_file(this)" th:value="${file.absolutelyUrl}">删除文件</button>
                 </span>
             </td>
+            <td >
+
+                <span>
+                    <button onclick="add_file_by_path(this)" th:value="${file.absolutelyUrl}">添加</button>
+                    到文件共享目录
+                </span>
+            </td>
         </tr>
     </table>
 </div>
@@ -184,8 +213,7 @@
         }else if (des_url === "$"){
             window.location.href='/'
         }else {
-            var tem_url = des_url.toString();
-            var url = tem_url.replace("\\", "/");
+            var url = des_url.replace(/\\/g, "/");
             window.location.href="/dir/get?destination=" + url + "/";
         }
 
@@ -193,15 +221,13 @@
 
     function download_file(down_button) {
         var des_url = down_button.value;
-        var tem_url = des_url.toString();
-        var url = tem_url.replace("\\", "/");
+        var url = des_url.replace(/\\/g, "/");
         window.location.href="/download/file?destination=" + url;
     }
 
     function delete_file(delete_button) {
         var des_url = delete_button.value;
-        var tem_url = des_url.toString();
-        var url = tem_url.replace("\\", "/");
+        var url = des_url.replace(/\\/g, "/");
 
         if (confirm("您确定要删除该文件？\n该文件位于：" + url)){
             $.ajax({
@@ -223,11 +249,8 @@
     }
 
     function createDir(create_button) {
-
         var des_url = create_button.value;
-        var tem_url = des_url.toString();
-        var url = tem_url.replace("\\", "/");
-
+        var url = des_url.replace(/\\/g, "/");
         var dirName = prompt("请输入新的文件夹名，该文件位于：" + url);
         $.ajax({
             url: '/dir' ,
@@ -245,8 +268,26 @@
                 alert(return_data);
             }
         });
-
     }
 
+    function add_file_by_path(add_button) {
+        var addPath = add_button.value;
+        var url = addPath.replace(/\\/g, "/");
+        // window.location.href="/download/file?destination=" + url;
+        $.ajax({
+            url: '/share' ,
+            type: 'POST',
+            data: {
+                "destination":url
+            },
+            success: function (return_data) {
+                alert(return_data.back_message);
+                window.location.reload();
+            },
+            error: function (return_data) {
+                alert(return_data);
+            }
+        });
+    }
 </script>
 </html>

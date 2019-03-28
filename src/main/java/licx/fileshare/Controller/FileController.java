@@ -12,14 +12,20 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class FileController {
@@ -46,27 +52,101 @@ public class FileController {
         return "index";
     }
 
+    @GetMapping("/share")
+    public String getFileSharingDir(Model model) {
+        List<FileInfor> fileInforList = fileService.getFileShareList();
 
-    @GetMapping("/download/file")
-    public ResponseEntity<FileSystemResource> downloadFile(String destination) {
-        return exportFile(new File(destination));
+        model.addAttribute("fileList", fileInforList);
+        return "share";
     }
 
-    private ResponseEntity<FileSystemResource> exportFile(File file) {
+    @PostMapping("/share")
+    @ResponseBody
+    public Map<String, String> addShareFile(String destination) {
+        Map<String, String> result = new HashMap<>();
+        File file = new File(destination);
+        if (!file.exists()){
+            result.put("back_message", "文件不存在。");
+            return result;
+        }
+        if (fileService.addShareFile(destination))
+            result.put("back_message", "成功添加文件 ‘" + destination + "’ 到文件共享目录。");
+        else
+            result.put("back_message", "添加失败。");
 
-        if (file == null) {
+        return result;
+    }
+
+    @DeleteMapping("/share")
+    @ResponseBody
+    public Map<String, String> deleteObjectFromShare(String destination) throws IOException {
+        Map<String, String> result = new HashMap<>();
+        if (fileService.deleteFileInShare(destination))
+            result.put("back_message", "成功从文件共享目录删除文件 ‘" + destination + "’ 。");
+        else
+            result.put("back_message", "删除失败。");
+        return result;
+    }
+
+
+    @GetMapping("/download/file")
+    public ResponseEntity<FileSystemResource> downloadFile(String destination) throws UnsupportedEncodingException {
+
+        File file = new File(destination);
+        if (!file.exists()) {
             return null;
         }
+        String fileName = file.getName();
+        fileName = new String(fileName.getBytes(), StandardCharsets.ISO_8859_1);
         HttpHeaders headers = new HttpHeaders();
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
-        headers.add("Content-Disposition", "attachment; filename=" + file.getName());
+        headers.add("Content-Disposition", "attachment; filename=" + fileName);
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");
         headers.add("Last-Modified", new Date().toString());
         headers.add("ETag", String.valueOf(System.currentTimeMillis()));
 
-        return ResponseEntity.ok().headers(headers).contentLength(file.length()).contentType(MediaType.parseMediaType("application/octet-stream")) .body(new FileSystemResource(file));
+        String contentType = fileService.getContentType(destination);
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentLength(file.length())
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(new FileSystemResource(file));
     }
+
+//    @GetMapping("/download/file")
+//    public void downloadFile(String destination, HttpServletResponse response) throws UnsupportedEncodingException {
+//        File file = new File(destination);
+//        if (file.exists()){
+//            String fileName = file.getName();
+//            String contentType = fileService.getContentType(destination);
+//            fileName = new String(fileName.getBytes(), StandardCharsets.ISO_8859_1);
+//            //1.设置文件ContentType类型，这样设置，会自动判断下载文件类型
+//            response.setContentType(contentType);
+//            //2.设置文件头：最后一个参数是设置下载文件名(假如我们叫a.pdf)
+//            response.setHeader("Content-Disposition", "attachment;fileName=" + fileName);
+//            ServletOutputStream out;
+//
+//            try {
+//                FileInputStream inputStream = new FileInputStream(file);
+//                //3.通过response获取ServletOutputStream对象(out)
+//                out = response.getOutputStream();
+//                int b = 0;
+//                byte[] buffer = new byte[512];
+//                while (b != -1){
+//                    b = inputStream.read(buffer);
+//                    //4.写到输出流(out)中
+//                    out.write(buffer,0,b);
+//                }
+//                inputStream.close();
+//                out.close();
+//                out.flush();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
 
 
     @PostMapping("/file")
@@ -76,37 +156,27 @@ public class FileController {
         HashMap<String, String> result = new HashMap<>();
         String fileNameList = "";
         if (files.length == 0){
-            result.put("back_infor", "请先选择要上传的文件");
+            result.put("back_message", "请先选择要上传的文件");
             return result;
         }
-//        if (file.isEmpty()) {
-//            result.put("back_infor", "请先选择要上传的文件");
-//            return result;
-//        }
 
         for (MultipartFile file : files) {
             if (file.isEmpty()) {
-                result.put("back_infor", "请先选择要上传的文件");
+                result.put("back_message", "请先选择要上传的文件");
                 return result;
             }
             try {
-                // Get the file and save it somewhere
-
                 byte[] bytes = file.getBytes();
                 Path path = Paths.get(curUrl + file.getOriginalFilename());
                 Files.write(path, bytes);
 
                 fileNameList = String.format("%s%s", fileNameList, "','" + file.getOriginalFilename());
-//                result.put("back_infor",
-//                        "成功上传文件 '" + file.getOriginalFilename() + "'");
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-
-        result.put("back_infor",
-                "成功上传文件 " + fileNameList + "' ");
+        result.put("back_message", "成功上传文件 " + fileNameList + "' ");
 
         return result;
     }
@@ -139,6 +209,7 @@ public class FileController {
             result.put("back_message", "文件夹已存在！");
             return result;
         }
+
         if (file.mkdir())
             result.put("back_message", "文件夹创建成功！");
         else

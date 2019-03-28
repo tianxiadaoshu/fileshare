@@ -3,15 +3,30 @@ package licx.fileshare.Service;
 import licx.fileshare.Domain.FileInfor;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.IOException;
+import javax.activation.MimetypesFileTypeMap;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class FileService {
+
+    private static String userHomePath = System.getProperty("user.home");
+    private static String fileShareListPath = System.getProperty("user.home") + "\\fileshare\\filesharelist.txt";
+    private ArrayList<File> sharedFiles;
+
+    {
+        try {
+            sharedFiles = getSharedObjects();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public List<FileInfor> getInitFiles(){
         File[] fileList = File.listRoots();
@@ -49,6 +64,89 @@ public class FileService {
         }
         return fileInforList;
     }
+
+    private ArrayList<File> getSharedObjects() throws IOException {
+        ArrayList<File> fileList = new ArrayList<>();
+
+        File fileShareListFile = new File(fileShareListPath);
+        InputStream inputStream = new FileInputStream(fileShareListFile);
+        InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+        BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+
+        String line;
+        while ((line = bufferedReader.readLine()) != null) {
+            File tempFile = new File(line);
+            if (tempFile.exists()){
+                fileList.add(tempFile);
+            }
+            System.out.println(line);
+        }
+        bufferedReader.close();
+        inputStreamReader.close();
+        inputStream.close();
+        return fileList;
+    }
+
+    public List<FileInfor> getFileShareList() {
+//        ArrayList<File> fileList = getSharedObjects();
+        File[] fileArray = new File[sharedFiles.size()];
+        sharedFiles.toArray(fileArray);
+        return fileListToFileInforList(fileArray);
+    }
+
+    public boolean addShareFile(String des) {
+//        ArrayList<File> fileList = getSharedObjects();
+        File desFile = new File(des);
+        if (sharedFiles.contains(desFile))
+            return true;
+        else
+            sharedFiles.add(desFile);
+        try {
+            File f = new File(fileShareListPath);
+            OutputStreamWriter write = new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8);
+            BufferedWriter writer = new BufferedWriter(write);
+            writer.write(des);
+            writer.newLine();
+            writer.close();
+        } catch (Exception e) {
+            System.out.println("写文件内容操作出错");
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean deleteFileInShare(String des) throws IOException {
+//        ArrayList<File> fileList = sharedFiles;
+//        System.out.println("删除"+des);
+        File desFile = new File(des);
+        if (!sharedFiles.contains(desFile))
+            return true;
+        boolean result = sharedFiles.remove(desFile);
+//        sharedFiles.remove(desFile);
+
+        File[] fileArray = new File[sharedFiles.size()];
+        sharedFiles.toArray(fileArray);
+        List<FileInfor> fileInforList = fileListToFileInforList(fileArray);
+        try {
+            File f = new File(fileShareListPath);
+            OutputStreamWriter write = new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8);
+            BufferedWriter writer = new BufferedWriter(write);
+            for (FileInfor fileInfor : fileInforList) {
+                writer.write(fileInfor.getAbsolutelyUrl());
+                writer.newLine();
+            }
+            writer.close();
+        } catch (Exception e) {
+            System.out.println("写文件内容操作出错");
+            e.printStackTrace();
+            return false;
+        }
+
+        return result;
+    }
+
 
 //    private ArrayList<File> getDiskInformation() {
 //
@@ -131,5 +229,20 @@ public class FileService {
         if (!flag) return false;
         //删除当前目录
         return dirFile.delete();
+    }
+
+    public String getContentType(String pathToFile) {
+
+        Path path = Paths.get(pathToFile);
+        String contentType = null;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+        if (contentType == null)
+            contentType = new MimetypesFileTypeMap().getContentType(new File(pathToFile));
+        return contentType;
     }
 }
