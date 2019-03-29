@@ -15,7 +15,7 @@ public class FileshareApplication {
 
     public static void main(String[] args) throws IOException {
         String userHomePath = System.getProperty("user.home");
-        String fileShareConfigPath = userHomePath + "\\fileshare\\";
+        String fileShareConfigPath = userHomePath + "/fileshare/";
         File fileShareConfigDir = new File(fileShareConfigPath);
         boolean flag = false;
         if (!fileShareConfigDir.exists()){

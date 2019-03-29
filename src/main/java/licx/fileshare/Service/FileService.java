@@ -17,7 +17,7 @@ import java.util.List;
 public class FileService {
 
     private static String userHomePath = System.getProperty("user.home");
-    private static String fileShareListPath = System.getProperty("user.home") + "\\fileshare\\filesharelist.txt";
+    private static String fileShareListPath = System.getProperty("user.home") + "/fileshare/filesharelist.txt";
     private ArrayList<File> sharedFiles;
 
     {
